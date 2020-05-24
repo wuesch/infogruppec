@@ -19,7 +19,7 @@ import java.util.Random;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
-public class gui extends Application
+public class gui_startbildschirm extends Application
 {
     @Override
     public void start(Stage primaryStage){
