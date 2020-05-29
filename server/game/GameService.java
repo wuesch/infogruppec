@@ -1,19 +1,16 @@
 package server.game;
 
-import server.database.DatabaseService;
-import server.question.QuestionResolver;
+import server.connect.database.DatabaseService;
+import server.game.question.QuestionResolver;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class GameService {
-  private final List<Game> games = new ArrayList<>();
-
-  private final DatabaseService databaseService;
-  private QuestionResolver questionResolver;
+  private final List<Game> activeGames = new ArrayList<>();
+  private final QuestionResolver questionResolver;
 
   public GameService(DatabaseService databaseService) {
-    this.databaseService = databaseService;
     this.questionResolver = new QuestionResolver(databaseService);
     this.questionResolver.loadQuestions();
   }
@@ -41,9 +38,10 @@ public final class GameService {
   }
 
   public void openSingleplayerGame(Player player) {
-    GameSingleplayer gameSingleplayer = new GameSingleplayer(player, questionResolver);
-    games.add(gameSingleplayer);
-    gameSingleplayer.loadNewQuestion();
+    GameSingleplayer singleplayerGame;
+    singleplayerGame = new GameSingleplayer(player, questionResolver);
+    singleplayerGame.loadNewQuestion();
+    activeGames.add(singleplayerGame);
   }
 
   public void processGameExit(Player player) {
@@ -52,11 +50,10 @@ public final class GameService {
   }
 
   private void processGameCommand(Player player, String label, String data) {
-    // label is something els
     // get active game
     Game activeGame = gameOf(player);
     if(activeGame != null) {
-      // push data to game
+      // forward data to game
       activeGame.receiveIncomingData(player, label, data);
     } else {
       throw new IllegalStateException("Client sent unknown data out of game");
@@ -66,18 +63,18 @@ public final class GameService {
   public void processQuit(Player player) {
     Game playerGame = gameOf(player);
     if(playerGame != null) {
-      boolean gameWillBeEmpty = playerGame.players.size() <= 1;
+      boolean gameWillBeEmpty = playerGame.players().size() <= 1;
       if(gameWillBeEmpty) {
-        games.remove(playerGame);
+        activeGames.remove(playerGame);
       } else {
-        playerGame.players.remove(player);
+        playerGame.players().remove(player);
         playerGame.notifyUpdate();
       }
     }
   }
 
   public Game gameOf(Player player) {
-    for (Game game : games) {
+    for (Game game : activeGames) {
       if(game.hasPlayer(player)) {
         return game;
       }

@@ -1,5 +1,6 @@
-package server;
+package server.connect.client;
 
+import server.QuizduellServer;
 import server.game.Player;
 
 import java.io.IOException;
@@ -37,27 +38,24 @@ public final class ConnectionService {
     this.port = port;
   }
 
+  public void awaitIncomingConnections() {
+    try {
+      Thread thisThread = Thread.currentThread();
+      while(!thisThread.isInterrupted()) {
+        acceptNewConnection(coreServerSocket.accept());
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
   public void startServer() throws IOException {
     prepareServerSocket();
-    bootHandshakeThread();
     bootProcessorThread();
   }
 
   private void prepareServerSocket() throws IOException {
     coreServerSocket = new ServerSocket(port);
-  }
-
-  private void bootHandshakeThread() {
-    new Thread(() -> {
-      try {
-        Thread thisThread = Thread.currentThread();
-        while(!thisThread.isInterrupted()) {
-          acceptNewConnection(coreServerSocket.accept());
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }, "net/io-handshake").start();
   }
 
   private void bootProcessorThread() {
@@ -75,11 +73,11 @@ public final class ConnectionService {
             continue;
           }
           // read input
-          String readData = player.readData();
+          String rawData = player.readRawData();
           // check if player has sent something
-          if(readData != null) {
+          if(rawData != null) {
             // forward data
-            processData(player, readData);
+            processRawData(player, rawData);
           }
         }
         // wait 100ms before checking for data again
@@ -99,7 +97,7 @@ public final class ConnectionService {
     players.add(player);
   }
 
-  private void processData(Player player, String inputData) {
+  private void processRawData(Player player, String inputData) {
     String[] inputDataSplit = inputData.split("->");
     String label = inputDataSplit[0]; // the name/label of the sent data
     String data = inputDataSplit[1]; // the data itself, packed into a string

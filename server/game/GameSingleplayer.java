@@ -1,7 +1,7 @@
 package server.game;
 
-import server.question.Question;
-import server.question.QuestionResolver;
+import server.game.question.Question;
+import server.game.question.QuestionResolver;
 
 import java.util.Collections;
 
@@ -20,10 +20,10 @@ public final class GameSingleplayer extends Game {
     Question newQuestion = questionResolver.resolveQuestion();
     setCurrentQuestion(newQuestion);
     // write question to string
-    // question:answer:answer:answer:answer
+    // question*^*answer*^*answer*^*answer*^*answer
     String output = newQuestion.question();
     for (String answer : newQuestion.answers()) {
-      output += ":" + answer;
+      output += "*^*" + answer;
     }
     // send string to client
     player.writeData("GIVE_QUESTION", output);

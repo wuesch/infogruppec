@@ -1,12 +1,12 @@
 package server.game;
 
-import server.question.Question;
+import server.game.question.Question;
 
 import java.util.List;
 
 public abstract class Game {
-  public Question currentQuestion;
-  public List<Player> players;
+  protected Question currentQuestion;
+  protected List<Player> players;
 
   private long started;
 
@@ -27,5 +27,13 @@ public abstract class Game {
 
   public void notifyUpdate() {
 
+  }
+
+  public final Question currentQuestion() {
+    return currentQuestion;
+  }
+
+  public final List<Player> players() {
+    return players;
   }
 }

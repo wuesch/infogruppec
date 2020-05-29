@@ -1,6 +1,6 @@
-package server.question;
+package server.game.question;
 
-import server.database.DatabaseService;
+import server.connect.database.DatabaseService;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,7 +21,6 @@ public final class QuestionResolver {
     if(resultSet == null) {
       throw new IllegalStateException();
     }
-    System.out.println("Loading questions from database...");
     try {
       while (resultSet.next()) {
         Question question = readQuestionFrom(resultSet);
@@ -30,7 +29,6 @@ public final class QuestionResolver {
     } catch (SQLException exception) {
       throw new IllegalStateException("Couldn't read questions from database", exception);
     }
-    System.out.println("Done! We now have " + loadedQuestions.size() + " questions available");
   }
 
   private final static int BEGIN_INDEX = 2;

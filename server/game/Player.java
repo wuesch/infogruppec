@@ -39,7 +39,7 @@ public final class Player {
     outputWriter.println(label + "->" + data);
   }
 
-  public String readData() {
+  public String readRawData() {
     try {
       if(socket.isConnected() && inputBufferedReader.ready()) {
         return inputBufferedReader.readLine();

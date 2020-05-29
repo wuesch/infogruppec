@@ -1,6 +1,4 @@
-package server.question;
-
-import java.util.Arrays;
+package server.game.question;
 
 public final class Question {
   private final String question;
