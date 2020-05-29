@@ -7,6 +7,6 @@ import javafx.scene.Scene;
  * Created by Richard Strunk 2020
  */
 
-public interface QuizduellGUI {
+public interface Scenebuilder {
   Scene fetchScene();
 }
