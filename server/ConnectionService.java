@@ -5,59 +5,105 @@ import server.game.Player;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
-import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ConnectionService {
+  private final static AtomicInteger playerIdCounter = new AtomicInteger();
 
   /**
    *  0. Verbindung wird erstellt
-   *  1. Spieler sagt Server den gewünschten Spielmodus (Single oder Multiplayer) | (REQUEST_GAMEMODE)
+   *  1. Spieler sagt Server den gewünschten Spielmodus (Single oder Multiplayer) | (ENTER_GAME)
    *
    *  Singleplayer
    *    2. Server antwortet mit Frage und 4 Antworten, aber nicht mit richtiger Frage! | (GIVE_QUESTION)
    *    3. Spieler nennt Antwort | (TRY_ANSWER)
-   *    4. Server nennt richtige Antwort und ob richtig und geht wieder zu 2. über | (RESULT)
+   *    4. Server nennt richtige Antwort und ob richtig oder falsch und geht wieder zu 2. über | (RESULT)
    *
    *  Multiplayer
-   *   Später mal in 100 Jahren juckt es uns vielleicht
+   *   yet to come
    *
    *
    */
 
-  private int cursor;
-  private int port;
+  private final List<Player> players = new CopyOnWriteArrayList<>();
+  private final QuizduellServer quizduellServer;
+  private final int port;
+  private ServerSocket coreServerSocket;
 
-  public ConnectionService(int port) {
+  public ConnectionService(QuizduellServer quizduellServer, int port) {
+    this.quizduellServer = quizduellServer;
     this.port = port;
   }
 
-  public void startServer() {
+  public void startServer() throws IOException {
+    prepareServerSocket();
+    bootHandshakeThread();
+    bootProcessorThread();
+  }
+
+  private void prepareServerSocket() throws IOException {
+    coreServerSocket = new ServerSocket(port);
+  }
+
+  private void bootHandshakeThread() {
     new Thread(() -> {
       try {
-        ServerSocket serverSocket = new ServerSocket(port);
-        while(!Thread.currentThread().isInterrupted()) {
-          acceptNewConnection(serverSocket.accept());
+        Thread thisThread = Thread.currentThread();
+        while(!thisThread.isInterrupted()) {
+          acceptNewConnection(coreServerSocket.accept());
         }
       } catch (IOException e) {
         e.printStackTrace();
       }
-    }, "connection-thread").start();
+    }, "net/io-handshake").start();
+  }
+
+  private void bootProcessorThread() {
+    // new thread (runs in parallel)
+    new Thread(() -> {
+      Thread thisThread = Thread.currentThread();
+      // while thread is not dead
+      while (!thisThread.isInterrupted()) {
+        // loop through all players
+        for (Player player : players) {
+          // check if connection was dropped
+          if(!player.isConnected()) {
+            // process connection drop as exit
+            quizduellServer.gameService().processGameExit(player);
+            continue;
+          }
+          // read input
+          String readData = player.readData();
+          // check if player has sent something
+          if(readData != null) {
+            // forward data
+            processData(player, readData);
+          }
+        }
+        // wait 100ms before checking for data again
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    }, "net/io-processor").start();
   }
 
   public void acceptNewConnection(Socket socket) {
-    Player player = new Player(cursor++, socket);
+    int nextPlayerIdentifier = playerIdCounter.getAndIncrement();
+    Player player = new Player(nextPlayerIdentifier, socket);
+    player.prepareSocketIO();
+    players.add(player);
+  }
 
-    try {
-      socket.setTcpNoDelay(true);
-      socket.setKeepAlive(true);
-    } catch (SocketException e) {
-      e.printStackTrace();
-    }
-
-
-
-
-
+  private void processData(Player player, String inputData) {
+    String[] inputDataSplit = inputData.split("->");
+    String label = inputDataSplit[0]; // the name/label of the sent data
+    String data = inputDataSplit[1]; // the data itself, packed into a string
+    // internal data processing
+    quizduellServer.gameService().receiveLabeledData(player, label, data);
   }
 }

@@ -2,26 +2,30 @@ package server.game;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.ByteBuffer;
+import java.net.SocketException;
 
 public final class Player {
   private final int identifier;
   private final Socket socket;
 
-  private InputStream inputStream;
   private BufferedReader inputBufferedReader;
-
-  private OutputStream outputStream;
-  private PrintStream printStream;
+  private PrintStream outputWriter;
 
   public Player(int identifier, Socket socket) {
     this.identifier = identifier;
     this.socket = socket;
+  }
+
+  public void prepareSocketIO() {
     try {
-      this.inputStream = socket.getInputStream();
-      this.inputBufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-      this.outputStream = socket.getOutputStream();
-      this.printStream = new PrintStream(outputStream, true);
+      socket.setTcpNoDelay(true);
+      socket.setKeepAlive(true);
+    } catch (SocketException e) {
+      e.printStackTrace();
+    }
+    try {
+      this.inputBufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      this.outputWriter = new PrintStream(socket.getOutputStream(), true);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -32,7 +36,33 @@ public final class Player {
   }
 
   public void writeData(String label, String data) {
-    printStream.println(label + "->" + data);
+    outputWriter.println(label + "->" + data);
+  }
+
+  public String readData() {
+    try {
+      if(socket.isConnected() && inputBufferedReader.ready()) {
+        return inputBufferedReader.readLine();
+      } else {
+        return null;
+      }
+    } catch (IOException exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
+  public boolean isConnected() {
+    return socket.isConnected();
+  }
+
+  public void closeConnection() {
+    if(isConnected()) {
+      try {
+        socket.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   public BufferedReader inputBufferedReader() {
@@ -40,7 +70,7 @@ public final class Player {
   }
 
   public PrintStream printStream() {
-    return printStream;
+    return outputWriter;
   }
 
   public Socket socket() {
