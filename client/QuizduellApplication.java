@@ -13,7 +13,7 @@ public final class QuizduellApplication extends Application {
   public void start(Stage primaryStage) {
     serverConnection.startConnection();
     primaryStage.setTitle("Quizduell");
-    primaryStage.getIcons().add(new Image("file:client/image/quizduell_icon.png"));
+    primaryStage.getIcons().add(new Image("file:client/gui/image/quizduell_icon.png"));
     primaryStage.setScene(new GUIMainMenu(this).fetchScene());
     primaryStage.show();
 

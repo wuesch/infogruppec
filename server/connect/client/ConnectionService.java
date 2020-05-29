@@ -38,6 +38,15 @@ public final class ConnectionService {
     this.port = port;
   }
 
+  public void startServer() throws IOException {
+    prepareServerSocket();
+    bootProcessorThread();
+  }
+
+  private void prepareServerSocket() throws IOException {
+    coreServerSocket = new ServerSocket(port);
+  }
+
   public void awaitIncomingConnections() {
     try {
       Thread thisThread = Thread.currentThread();
@@ -47,15 +56,6 @@ public final class ConnectionService {
     } catch (IOException e) {
       e.printStackTrace();
     }
-  }
-
-  public void startServer() throws IOException {
-    prepareServerSocket();
-    bootProcessorThread();
-  }
-
-  private void prepareServerSocket() throws IOException {
-    coreServerSocket = new ServerSocket(port);
   }
 
   private void bootProcessorThread() {
