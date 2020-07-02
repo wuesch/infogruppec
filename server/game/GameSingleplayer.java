@@ -21,12 +21,12 @@ public final class GameSingleplayer extends Game {
     setCurrentQuestion(newQuestion);
     // write question to string
     // question*^*answer*^*answer*^*answer*^*answer
-    String output = newQuestion.question();
+    StringBuilder output = new StringBuilder(newQuestion.question());
     for (String answer : newQuestion.answers()) {
-      output += "*^*" + answer;
+      output.append("*^*").append(answer);
     }
     // send string to client
-    player.writeData("GIVE_QUESTION", output);
+    player.sendData("GIVE_QUESTION", output.toString());
   }
 
   @Override
@@ -35,7 +35,7 @@ public final class GameSingleplayer extends Game {
       int receivedAnswerIndex = Integer.parseInt(data);
       int correctAnswerIndex = currentQuestion.correctAnswerIndex();
       boolean correctAnswer = receivedAnswerIndex == correctAnswerIndex;
-      player.writeData("RESULT", correctAnswerIndex + "::" + correctAnswer);
+      player.sendData("RESULT", correctAnswerIndex + "::" + correctAnswer);
       loadNewQuestion();
     }
   }

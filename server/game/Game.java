@@ -25,7 +25,7 @@ public abstract class Game {
 
   public abstract void receiveIncomingData(Player player, String dataLabel, String data);
 
-  public void notifyUpdate() {
+  public void tick() {
 
   }
 

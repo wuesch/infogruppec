@@ -48,13 +48,27 @@ public class GUIMainMenu implements Scenebuilder {
   private void startGame(GameMode gameMode) {
     ConnectionService connectionService = quizduellApplication.serverConnection();
     connectionService.writeData("ENTER_GAME", gameMode.name());
+
+    if(gameMode == GameMode.SINGLEPLAYER) {
+      startSingleplayerGame();
+    } else {
+      startMultiplayerGame();
+    }
+  }
+
+  private void startSingleplayerGame() {
+    ConnectionService connectionService = quizduellApplication.serverConnection();
     String input = connectionService.requireRawData();
     String[] inputSplit = input.split("->")[1].split("\\*\\^\\*");
-
     String question = inputSplit[0];
     String[] answers = new String[4];
     System.arraycopy(inputSplit, 1, answers, 0, 4);
     GUIIngameSingleplayer guiIngameSingleplayer = new GUIIngameSingleplayer(quizduellApplication, question, answers);
     quizduellApplication.primaryStage().setScene(guiIngameSingleplayer.fetchScene());
+  }
+
+  private void startMultiplayerGame() {
+    GUINameChoose guiNameChoose = new GUINameChoose(quizduellApplication);
+    quizduellApplication.primaryStage().setScene(guiNameChoose.fetchScene());
   }
 }

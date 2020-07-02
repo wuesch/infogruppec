@@ -5,11 +5,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public final class ConnectionService {
   private Socket socket;
   private BufferedReader inputBufferedReader;
   private PrintStream outputWriter;
+
+  private BlockingQueue<String> incomingPackets = new ArrayBlockingQueue<>(50);
 
   public void startConnection() {
     try {
@@ -24,33 +28,42 @@ public final class ConnectionService {
     }
   }
 
+  public void startSocketReaderThread() {
+    new Thread(() -> {
+      Thread thread = Thread.currentThread();
+      while (!thread.isInterrupted()) {
+        try {
+          while (socket.isConnected() && inputBufferedReader.ready()) {
+            String packetData = inputBufferedReader.readLine();
+            if(Serialization.labelFromPacket(packetData).equals("PING")) {
+              receivePingPacket(packetData);
+              break;
+            }
+            incomingPackets.add(packetData);
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }, "SocketReader").start();
+  }
+
+  private void receivePingPacket(String packet) {
+    String packetData = Serialization.dataFromPacket(packet);
+    writeData("PONG", packetData);
+  }
+
   public void writeData(String label, String data) {
     outputWriter.println(label + "->" + data);
   }
 
-  public String readRawData() {
-    try {
-      if(socket.isConnected() && inputBufferedReader.ready()) {
-        return inputBufferedReader.readLine();
-      } else {
-        return null;
-      }
-    } catch (IOException exception) {
-      throw new IllegalStateException(exception);
-    }
-  }
-
   public String requireRawData() {
     try {
-      if(socket.isConnected()) {
-        return inputBufferedReader.readLine();
-      }
-      throw new IllegalStateException("Socket closed unexpectedly");
-    } catch (IOException exception) {
-      throw new IllegalStateException(exception);
+      return incomingPackets.take();
+    } catch (InterruptedException e) {
+      throw new IllegalStateException(e);
     }
   }
-
   public boolean isConnected() {
     return socket.isConnected();
   }

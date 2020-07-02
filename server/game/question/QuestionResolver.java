@@ -46,7 +46,7 @@ public final class QuestionResolver {
     return new Question(question, answers, correctAnswerIndex);
   }
 
-  public Question resolveQuestion() {
+  public synchronized Question resolveQuestion() {
     if(questionCursor >= loadedQuestions.size()) {
       questionCursor = 0;
     }

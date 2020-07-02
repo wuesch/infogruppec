@@ -3,8 +3,6 @@ package client.gui;
 import client.QuizduellApplication;
 import client.connect.server.ConnectionService;
 import javafx.concurrent.Task;
-import javafx.concurrent.WorkerStateEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -48,14 +46,11 @@ public class GUIIngameSingleplayer implements Scenebuilder {
     int horizontalStartIndex;
     if(frage.length() > 100) {
       horizontalStartIndex = 4;
-
       int goodIndex = 100;
-      while (frage.charAt(goodIndex++) != ' ' && goodIndex < frage.length()) {}
-
+      while (frage.charAt(goodIndex++) != ' ' && goodIndex < frage.length());
       Text frageText = new Text(frage.substring(0, goodIndex).trim());
       grid.add(frageText, 1, 1);
-
-      Text frageText2 = new Text(frage.substring(goodIndex).trim() + "?");
+        Text frageText2 = new Text(frage.substring(goodIndex).trim() + "?");
       grid.add(frageText2, 1, 2);
     } else {
       horizontalStartIndex = 2;
@@ -94,13 +89,11 @@ public class GUIIngameSingleplayer implements Scenebuilder {
       grid.add(radioButton, i % 2 + 1, i / buttonsPerColumn + horizontalStartIndex);
       buttons.add(radioButton);
     }
-
     Text loesungsInfo = new Text("");
     grid.add(loesungsInfo, 1, horizontalStartIndex + 3);
-
     confirm.setOnAction(event -> {
-      int selectedIndex = -1;
 
+      int selectedIndex = -1;
       for (int i = 0; i < 4; i++) {
         RadioButton radioButton = buttons.get(i);
         if(radioButton.selectedProperty().get()) {
@@ -108,54 +101,45 @@ public class GUIIngameSingleplayer implements Scenebuilder {
           break;
         }
       }
+
       if(selectedIndex < 0) {
         throw new IllegalStateException();
       }
 
       ConnectionService connectionService = quizduellApplication.serverConnection();
       connectionService.writeData("TRY_ANSWER", String.valueOf(selectedIndex));
-
       String result = connectionService.requireRawData();
       String[] resultSplit = result.split("->")[1].split("::");
-
       int correctIndex = Integer.parseInt(resultSplit[0]);
       boolean correct = Boolean.parseBoolean(resultSplit[1]);
-
       loesungsInfo.setFill(correct ? Color.GREEN : Color.RED);
       loesungsInfo.setText(correct ? "Richtig" : "Falsch. Richtige Antwort: " + antworten[correctIndex]);
-
       String input = connectionService.requireRawData();
-
       for (RadioButton button : buttons) {
         button.setDisable(true);
       }
       confirm.setDisable(true);
-
       Task<Void> sleeper = new Task<Void>() {
         @Override
         protected Void call() {
-          try {
-            Thread.sleep(2000);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          return null;
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return null;
         }
       };
-
       sleeper.setOnSucceeded(event1 -> {
         String[] inputSplit = input.split("->")[1].split("\\*\\^\\*");
-
         String question = inputSplit[0];
         String[] answers = new String[4];
         System.arraycopy(inputSplit, 1, answers, 0, 4);
         GUIIngameSingleplayer guiIngameSingleplayer = new GUIIngameSingleplayer(quizduellApplication, question, answers);
         quizduellApplication.primaryStage().setScene(guiIngameSingleplayer.fetchScene());
       });
-
       new Thread(sleeper).start();
     });
-
     grid.add(confirm, 1, horizontalStartIndex + 2);
     return new Scene(grid, 750, 450);
   }

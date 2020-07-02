@@ -5,6 +5,7 @@ import server.game.question.QuestionResolver;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class GameService {
   private final List<Game> activeGames = new ArrayList<>();
@@ -33,7 +34,7 @@ public final class GameService {
     if(gamemode.equalsIgnoreCase("SINGLEPLAYER")) {
       openSingleplayerGame(player);
     } else {
-      throw new UnsupportedOperationException("Client requested game of invalid type: " + gamemode);
+      openMultiplayerGame(player);
     }
   }
 
@@ -42,6 +43,25 @@ public final class GameService {
     singleplayerGame = new GameSingleplayer(player, questionResolver);
     singleplayerGame.loadNewQuestion();
     activeGames.add(singleplayerGame);
+  }
+
+  public void openMultiplayerGame(Player player) {
+    Optional<GameMultiplayer> gameInLobby = searchMultiplayerGameInLobby();
+    GameMultiplayer multiplayerGame = gameInLobby.orElseGet(() -> new GameMultiplayer(player, questionResolver));
+    multiplayerGame.playerJoin(player);
+    activeGames.add(multiplayerGame);
+  }
+
+  private Optional<GameMultiplayer> searchMultiplayerGameInLobby() {
+    for (Game activeGame : activeGames) {
+      if(activeGame instanceof GameMultiplayer) {
+        GameMultiplayer activeMultiplayerGame = (GameMultiplayer) activeGame;
+        if(activeMultiplayerGame.canBeJoined()) {
+          return Optional.of(activeMultiplayerGame);
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   public void processGameExit(Player player) {
@@ -53,10 +73,16 @@ public final class GameService {
     // get active game
     Game activeGame = gameOf(player);
     if(activeGame != null) {
-      // forward data to game
-      activeGame.receiveIncomingData(player, label, data);
+      try {
+        // forward data to game
+        activeGame.receiveIncomingData(player, label, data);
+      } catch (Exception exception) {
+        player.closeConnection();
+        System.out.println("Player " + player + " sent invalid packet: " + exception.getMessage());
+      }
     } else {
-      throw new IllegalStateException("Client sent unknown data out of game");
+      player.closeConnection();
+      System.out.println("Player " + player + " sent packet out of game");
     }
   }
 
@@ -68,8 +94,13 @@ public final class GameService {
         activeGames.remove(playerGame);
       } else {
         playerGame.players().remove(player);
-        playerGame.notifyUpdate();
       }
+    }
+  }
+
+  public void processTick() {
+    for (Game activeGame : activeGames) {
+      activeGame.tick();
     }
   }
 

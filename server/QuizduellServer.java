@@ -15,7 +15,7 @@ public final class QuizduellServer {
   public void boot() {
     try {
       databaseService = new DatabaseService();
-      databaseService.tryConnect("localhost", 3306, "schule", "tess", "12345678");
+      databaseService.tryConnect("localhost", 3306, "schule", "root", "");
       connectionService = new ConnectionService(this, 8749);
       connectionService.startServer();
       gameService = new GameService(databaseService);
