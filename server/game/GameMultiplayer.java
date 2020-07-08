@@ -10,12 +10,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public final class GameMultiplayer extends Game {
-  public static final int REQUIRED_PLAYERS = 1;
+  public static final int REQUIRED_PLAYERS = 2;
 
   private final static ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
   private final QuestionResolver questionResolver;
   private MultiplayerState state;
-  private int rounds = 8;
+  private int rounds = 6;
   private int lobbyTimer = 10;
   private int gameTimer = 30;
   private int ticks;
@@ -23,7 +23,7 @@ public final class GameMultiplayer extends Game {
   public GameMultiplayer(Player initialPlayer, QuestionResolver questionResolver) {
     super(new LinkedList<>(Collections.singletonList(initialPlayer)));
     this.questionResolver = questionResolver;
-    state = MultiplayerState.LOBBY;
+    this.state = MultiplayerState.LOBBY;
   }
 
   public void playerJoin(Player player) {
@@ -34,6 +34,7 @@ public final class GameMultiplayer extends Game {
       return;
     }
     System.out.println(player + " joined game " + this);
+    player.reset();
     players().add(player);
   }
 
@@ -45,7 +46,7 @@ public final class GameMultiplayer extends Game {
         awaitSynchronizationAndStartGame();
       }
     } else if(waitingForAnswers()) {
-      if(ticks % 10 == 0) {
+      if(ticks % 20 == 0) {
         broadcastGameInformation();
         boolean everybodyGaveAnswer = players().stream().allMatch(Player::givenAnswer);
         if(gameTimer-- <= 0 || everybodyGaveAnswer) {
@@ -61,24 +62,48 @@ public final class GameMultiplayer extends Game {
             output.append(wasCorrect ? "1" : "0");
             output.append(";");
           }
-          output.deleteCharAt(output.length());
-
+          output.deleteCharAt(output.length() - 1);
           for (Player player : players()) {
+            if(player.givenAnswerIndex() == correctAnswerIndex) {
+              player.setCorrectAnswers(player.correctAnswers() + 1);
+            }
             player.sendData("GAME_RESULT", output.toString());
           }
-
           executor.schedule(() -> {
-            if(rounds-- > 0) {
+            if(rounds > 0) {
               // new game
               awaitSynchronizationAndStartGame();
             } else {
               // finish
+              finishAndEndGame();
             }
-          }, 3, TimeUnit.SECONDS);
+          }, 4, TimeUnit.SECONDS);
         }
       }
     }
     ticks++;
+  }
+
+  private void finishAndEndGame() {
+    StringBuilder stuff = new StringBuilder();
+    for (Player player : players()) {
+      stuff.append(player.customName());
+      stuff.append(";");
+    }
+    stuff.append("@");
+    for (Player player : players()) {
+      stuff.append(player.correctAnswers());
+      stuff.append(";");
+    }
+    String stuffAsString = stuff.toString();
+    stuffAsString = stuffAsString.replace(";@", "@");
+    for (Player player : players()) {
+      player.sendData("GAME_FINISH", stuffAsString);
+      player.reset();
+    }
+
+    // stop the game
+    exit();
   }
 
   @Override
@@ -86,35 +111,72 @@ public final class GameMultiplayer extends Game {
     player.setAwaitingResponse(false);
     switch (dataLabel) {
       case "LOBBY_ENTER":
-        //noinspection UnnecessaryLocalVariable
         String playerName = data;
-        player.setCustomName(playerName);
+        playerName = stripEverythingElseThanChars(playerName);
+        playerName = playerName.replaceAll(" ", "").trim();
+        playerName = playerName.length() > 16 ? playerName.substring(0, 15) : playerName;
+        playerName = uniqueName(playerName);
+        playerName = playerName.replaceAll(" ", "").trim();
+        if(!playerName.isEmpty()) {
+          player.setCustomName(playerName);
+        } else {
+          break;
+        }
       case "LOBBY_KEEP_ALIVE":
-        System.out.println(player.customName() + " " + data + " " + player.ready());
         boolean ready = data.equals("1");
         player.setReady(ready);
-
         if(canBeJoined()) {
           sendLobbyInfo(player);
           player.setAwaitingResponse(true);
         }
         break;
-
       case "GAME_ANSWER":
         int answerIndex = Integer.parseInt(data);
         player.setGivenAnswer(true);
         player.setGivenAnswerIndex(answerIndex);
         break;
-
     }
   }
 
-  private boolean startRequirementsMet() {
-    if(players().size() >= REQUIRED_PLAYERS) {
-      return players().stream().allMatch(Player::ready);
-    } else {
-      return false;
+  private String uniqueName(String playerName) {
+    int search = 0;
+    while (true) {
+      boolean nameExists = false;
+      for (Player otherPlayer : players()) {
+        if (
+          otherPlayer.customName() != null &&
+          otherPlayer.customName().equals(playerName + (search > 0 ? String.valueOf(search) : ""))
+        ) {
+          nameExists = true;
+          break;
+        }
+      }
+      if(nameExists) {
+        search++;
+      } else {
+        break;
+      }
     }
+    if(search > 0) {
+      playerName += search;
+    }
+    return playerName;
+  }
+
+  private String stripEverythingElseThanChars(String input) {
+    char[] chars = new char[input.length()];
+    int cursor = 0;
+    for (char c : input.toCharArray()) {
+      if(Character.isAlphabetic(c)) {
+        chars[cursor++] = c;
+      }
+    }
+    System.arraycopy(chars, 0, chars, 0, cursor);
+    return new String(chars);
+  }
+
+  private boolean startRequirementsMet() {
+    return players().size() >= REQUIRED_PLAYERS && players().stream().allMatch(Player::ready);
   }
 
   private void sendLobbyInfo(Player player) {
@@ -137,8 +199,8 @@ public final class GameMultiplayer extends Game {
   }
 
   private void awaitSynchronizationAndStartGame() {
-    boolean allReady = players().stream().noneMatch(Player::awaitingResponse);
-    if(allReady) {
+    boolean noResponcePending = players().stream().noneMatch(Player::awaitingResponse);
+    if(noResponcePending) {
       try {
         beginGame();
       } catch (Exception e) {
@@ -166,10 +228,13 @@ public final class GameMultiplayer extends Game {
       }
       dataToSend.deleteCharAt(dataToSend.length() - 1);
       player.sendData("GAME_PREPARE", dataToSend.toString() + "@" + output);
+      player.setGivenAnswer(false);
+      player.setGivenAnswerIndex(-1);
     }
 
     state = MultiplayerState.WAITING_FOR_ANSWERS;
     gameTimer = 30;
+    rounds--;
   }
 
   private void broadcastGameInformation() {
@@ -184,7 +249,6 @@ public final class GameMultiplayer extends Game {
     for (Player player : players()) {
       player.sendData("GAME_STATUS", data);
     }
-
   }
 
   public boolean canBeJoined() {

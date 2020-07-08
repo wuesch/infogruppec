@@ -66,7 +66,7 @@ public final class GameService {
 
   public void processGameExit(Player player) {
     processQuit(player);
-    player.closeConnection();
+    //player.closeConnection();
   }
 
   private void processGameCommand(Player player, String label, String data) {
@@ -77,6 +77,7 @@ public final class GameService {
         // forward data to game
         activeGame.receiveIncomingData(player, label, data);
       } catch (Exception exception) {
+        exception.printStackTrace();
         player.closeConnection();
         System.out.println("Player " + player + " sent invalid packet: " + exception.getMessage());
       }
@@ -84,6 +85,11 @@ public final class GameService {
       player.closeConnection();
       System.out.println("Player " + player + " sent packet out of game");
     }
+  }
+
+  public void killGame(Game game) {
+    game.players().clear();
+    activeGames.remove(game);
   }
 
   public void processQuit(Player player) {

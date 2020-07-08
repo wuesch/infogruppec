@@ -1,11 +1,43 @@
 package client.gui;
 
+import client.QuizduellApplication;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.Text;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 public class GUIEndscreen implements Scenebuilder {
+  private final QuizduellApplication quizduellApplication;
+  private Map<String, Integer> rankList = new HashMap<>();
+
+  public GUIEndscreen(QuizduellApplication quizduellApplication) {
+    this.quizduellApplication = quizduellApplication;
+  }
+
+  public void applyFrom(String packetData) {
+    String[] split = packetData.split("@");
+    String[] playersUnordered = split[0].split(";");
+    String[] scores = split[1].split(";");
+    for (int i = 0; i < scores.length; i++) {
+      String name = playersUnordered[i];
+      int score = Integer.parseInt(scores[i]);
+      rankList.put(name, score);
+    }
+    rankList = rankList
+      .entrySet()
+      .stream()
+      .sorted(Collections.reverseOrder(Map.Entry.comparingByValue(Integer::compareTo)))
+      .collect(Collectors.toMap(
+        Map.Entry::getKey,
+        Map.Entry::getValue,
+        (u,v) -> { throw new IllegalStateException(String.format("Duplicate key %s", u)); },
+        LinkedHashMap::new
+      ));
+  }
 
   @Override
   public Scene fetchScene() {
@@ -17,36 +49,12 @@ public class GUIEndscreen implements Scenebuilder {
     Text titel = new Text("Rangliste");
     grid.add(titel, 1, 0);
 
-    Text spieler1 = new Text("platzhalter");
-    grid.add(spieler1, 1, 2);
-
-    Text spieler2 = new Text("platzhalter");
-    grid.add(spieler2, 1, 3);
-
-    Text spieler3 = new Text("platzhalter");
-    grid.add(spieler3, 1, 4);
-
-    Text spieler4 = new Text("platzhalter");
-    grid.add(spieler4, 1, 5);
-
-    Text spieler5 = new Text("platzhalter");
-    grid.add(spieler5, 1, 6);
-
-    Text spieler6 = new Text("platzhalter");
-    grid.add(spieler6, 1, 7);
-
-    Text spieler7 = new Text("platzhalter");
-    grid.add(spieler7, 1, 8);
-
-    Text spieler8 = new Text("platzhalter");
-    grid.add(spieler8, 1, 9);
-
-    Text spieler9 = new Text("platzhalter");
-    grid.add(spieler9, 1, 10);
-
-    Text spieler10 = new Text("platzhalter");
-    grid.add(spieler10, 1, 11);
-
+    int index = 0;
+    for (Map.Entry<String, Integer> playerRankEntry : rankList.entrySet()) {
+      grid.add(new Text(playerRankEntry.getKey()), 1, index + 2);
+      grid.add(new Text(String.valueOf(playerRankEntry.getValue())), 2, index + 2);
+      index++;
+    }
 
     Text rang1 = new Text("1. Platz");
     grid.add(rang1, 0, 2);
@@ -57,38 +65,11 @@ public class GUIEndscreen implements Scenebuilder {
     Text rang3 = new Text("3. Platz");
     grid.add(rang3, 0, 4);
 
-
-    Text punkte1 = new Text("platzhalter punkte");
-    grid.add(punkte1, 2, 2);
-
-    Text punkte2 = new Text("platzhalter punkte");
-    grid.add(punkte2, 2, 3);
-
-    Text punkte3 = new Text("platzhalter punkte");
-    grid.add(punkte3, 2, 4);
-
-    Text punkte4 = new Text("platzhalter punkte");
-    grid.add(punkte4, 2, 5);
-
-    Text punkte5 = new Text("platzhalter punkte");
-    grid.add(punkte5, 2, 6);
-
-    Text punkte6 = new Text("platzhalter punkte");
-    grid.add(punkte6, 2, 7);
-
-    Text punkte7 = new Text("platzhalter punkte");
-    grid.add(punkte7, 2, 8);
-
-    Text punkte8 = new Text("platzhalter punkte");
-    grid.add(punkte8, 2, 9);
-
-    Text punkte9 = new Text("platzhalter punkte");
-    grid.add(punkte9, 2, 10);
-
-    Text punkte10 = new Text("platzhalter punkte");
-    grid.add(punkte10, 2, 11);
-
-
+    Button returnButton = new Button("Back");
+    returnButton.setOnAction(event -> {
+      quizduellApplication.primaryStage().setScene(new GUIMainMenu(quizduellApplication).fetchScene());
+    });
+    grid.add(returnButton, 0, 0);
     return new Scene(grid, 750, 450);
   }
 }

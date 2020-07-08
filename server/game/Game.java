@@ -1,5 +1,6 @@
 package server.game;
 
+import server.QuizduellServer;
 import server.game.question.Question;
 
 import java.util.List;
@@ -26,7 +27,10 @@ public abstract class Game {
   public abstract void receiveIncomingData(Player player, String dataLabel, String data);
 
   public void tick() {
+  }
 
+  public final void exit() {
+    QuizduellServer.singletonInstance().gameService().killGame(this);
   }
 
   public final Question currentQuestion() {

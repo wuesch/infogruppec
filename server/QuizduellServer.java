@@ -1,10 +1,12 @@
 package server;
 
+import server.connect.client.ConnectionService;
 import server.connect.database.DatabaseService;
 import server.game.GameService;
-import server.connect.client.ConnectionService;
 
 public final class QuizduellServer {
+  private static QuizduellServer singletonInstance;
+
   private GameService gameService;
   private DatabaseService databaseService;
   private ConnectionService connectionService;
@@ -41,8 +43,12 @@ public final class QuizduellServer {
   }
 
   public static void main(String[] args) {
-    QuizduellServer quizduellServer = new QuizduellServer();
-    quizduellServer.boot();
-    quizduellServer.awaitIncomingConnections();
+    singletonInstance = new QuizduellServer();
+    singletonInstance.boot();
+    singletonInstance.awaitIncomingConnections();
+  }
+
+  public static QuizduellServer singletonInstance() {
+    return singletonInstance;
   }
 }

@@ -3,13 +3,14 @@ package server.game;
 
 import server.connect.client.Serialization;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public final class Player {
   private final int identifier;
@@ -25,7 +26,9 @@ public final class Player {
   private boolean awaitingResponse;
   private boolean givenAnswer;
   private int givenAnswerIndex;
+  private int correctAnswers = 0;
   private long lastTimeAnswered = System.currentTimeMillis();
+
 
   public Player(int identifier, Socket socket) {
     this.identifier = identifier;
@@ -75,7 +78,7 @@ public final class Player {
 
   public void sendData(String label, String data) {
     outputWriter.println(label + "->" + data);
-    System.out.println("Sent " + label + " to " + this);
+    //System.out.println("Sent " + label + " to " + this);
   }
 
   public String receiveData() {
@@ -141,6 +144,23 @@ public final class Player {
 
   public void setGivenAnswerIndex(int givenAnswerIndex) {
     this.givenAnswerIndex = givenAnswerIndex;
+  }
+
+  public int correctAnswers() {
+    return correctAnswers;
+  }
+
+  public void setCorrectAnswers(int correctAnswers) {
+    this.correctAnswers = correctAnswers;
+  }
+
+  public void reset() {
+    setAwaitingResponse(false);
+    setCorrectAnswers(0);
+    setCustomName(null);
+    setGivenAnswer(false);
+    setGivenAnswerIndex(-1);
+    setReady(false);
   }
 
   public BufferedReader inputBufferedReader() {

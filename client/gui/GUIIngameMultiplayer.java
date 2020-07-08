@@ -3,6 +3,7 @@ package client.gui;
 import client.QuizduellApplication;
 import client.connect.server.ConnectionService;
 import client.connect.server.Serialization;
+import client.gui.image.ImageLocation;
 import javafx.concurrent.Task;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -27,6 +28,7 @@ public class GUIIngameMultiplayer implements Scenebuilder {
   private String[] playerNames;
   private boolean[] finished;
   private int countdown;
+  private int clickedIndex = -1;
 
   private Text infoText;
 
@@ -35,21 +37,67 @@ public class GUIIngameMultiplayer implements Scenebuilder {
   }
 
   public void setupWithGamePrepareData(String gamePrepare) {
+//    System.out.println(gamePrepare);
+
     String[] split = gamePrepare.split("@");
 
-    String questionStruct = split[0];
-    String[] inputSplit = questionStruct.split("->")[1].split("\\*\\^\\*");
+    String playerStruct = split[0];
+    String[] playerNames = playerStruct.split(";");
+
+    String questionStruct = split[1];
+    String[] inputSplit = questionStruct.split("\\*\\^\\*");
     String question = inputSplit[0];
     String[] answers = new String[4];
     System.arraycopy(inputSplit, 1, answers, 0, 4);
 
-    String playerStruct = split[1];
-    String[] playerNames = playerStruct.split(";");
 
     this.frage = question;
     this.antworten = answers;
     this.playerNames = playerNames;
     this.finished = new boolean[playerNames.length];
+
+    updateInfoText();
+  }
+
+  private void updateInfoText() {
+    sync(() -> {
+      int ready = 0;
+      for (boolean b : finished) {
+        ready = b ? ready + 1 : ready;
+      }
+      infoText.setText(ready + " of " + finished.length + " have given an answer, " + countdown + " seconds remaining");
+    });
+  }
+
+  private void displayResult(int amountCorrect, int correctIndex) {
+    boolean wasCorrect = this.clickedIndex == correctIndex;
+
+    String generatedText;
+    if(wasCorrect) {
+      if(amountCorrect == 1) {
+        generatedText = "Du hattest als einziger Recht!";
+      } else if(amountCorrect == 2) {
+        generatedText = "Du lagst mit einem anderen Spieler richtig";
+      } else if(amountCorrect > 2) {
+        generatedText = "Du hattest zusammen mit " + (amountCorrect - 1) + " Spielern Recht";
+      } else {
+        generatedText = "Fehler";
+      }
+    } else {
+      String correctAnswer = this.antworten[correctIndex];
+      if(amountCorrect == 0) {
+        generatedText = "Alle lagen daneben! Richtig war: " + correctAnswer;
+      } else if(amountCorrect == 1) {
+        generatedText = "Ein Spieler lag richtig, und das warst nicht du! Richtig war: "+ correctAnswer;
+      } else {
+        generatedText = "Falsch! Und obwohl " + (amountCorrect) + " Spieler wussten, dass die richtige Antwort " + correctAnswer + " war!";
+      }
+    }
+
+    sync(() -> {
+      infoText.setText(generatedText);
+      infoText.setFill(wasCorrect ? Color.GREEN : Color.RED);
+    });
   }
 
   public void pushDataRequirement() {
@@ -61,8 +109,12 @@ public class GUIIngameMultiplayer implements Scenebuilder {
     };
     aquirePacket.setOnSucceeded(event -> {
       String packet = (String) event.getSource().getValue();
-      if(processData(packet)) {
-        pushDataRequirement();
+      try {
+        if(processData(packet)) {
+          pushDataRequirement();
+        }
+      } catch (Exception exception) {
+        exception.printStackTrace();
       }
     });
     executor.execute(aquirePacket);
@@ -82,46 +134,46 @@ public class GUIIngameMultiplayer implements Scenebuilder {
         String[] split = data.split("@");
         String givenAnswerStruct = split[0];
         String countdown = split[1];
-
         String[] playerAnswered = givenAnswerStruct.split(";");
-
         for (int i = 0; i < playerAnswered.length; i++) {
           this.finished[i] = playerAnswered[i].equals("1");
         }
-
         this.countdown = Integer.parseInt(countdown);
-
+        updateInfoText();
         return true;
 
       case "GAME_RESULT":
         // show answer
-
+        String[] splitX = data.split("@");
+        int correctIndex = Integer.parseInt(splitX[0]);
+        String[] correctOthersString = splitX[1].split(";");
+        boolean[] correctOthers = new boolean[correctOthersString.length];
+        for (int i = 0; i < correctOthers.length; i++) {
+          correctOthers[i] = correctOthersString[i].equals("1");
+        }
+        int amountOfCorrectOthers = 0;
+        for (boolean correctOther : correctOthers) {
+          amountOfCorrectOthers += (correctOther ? 1 : 0);
+        }
+        displayResult(amountOfCorrectOthers, correctIndex);
         return true;
 
       case "GAME_PREPARE":
         // next game
-
+        GUIIngameMultiplayer guiMP = new GUIIngameMultiplayer(quizduellApplication);
+        guiMP.setupWithGamePrepareData(data);
+        guiMP.pushDataRequirement();
+        quizduellApplication.primaryStage().setScene(guiMP.fetchScene());
         return false;
-
       case "GAME_FINISH":
         // show endscreen
-
-
+        GUIEndscreen endscreen = new GUIEndscreen(quizduellApplication);
+        endscreen.applyFrom(data);
+        quizduellApplication.primaryStage().setScene(endscreen.fetchScene());
         return false;
     }
 
-
     return false;
-  }
-
-  private void updateInfoText() {
-    sync(() -> {
-      int ready = 0;
-      for (boolean b : finished) {
-        ready = b ? ready + 1 : ready;
-      }
-      infoText.setText(ready + "/"+finished.length + " have given an answer ");
-    });
   }
 
   private void sync(Runnable runnable) {
@@ -140,7 +192,7 @@ public class GUIIngameMultiplayer implements Scenebuilder {
     grid.setAlignment(Pos.CENTER);
     grid.setHgap(10);
     grid.setVgap(10);
-    Image logo = new Image("file:client/gui/image/quizduell_logo.png");
+    Image logo = new Image(new ImageLocation("client/gui/image/quizduell_logo.png").loaded().localPathJXParsed());
     ImageView iv1 = new ImageView();
     iv1.setImage(logo);
     iv1.setFitHeight(118);
@@ -193,8 +245,8 @@ public class GUIIngameMultiplayer implements Scenebuilder {
       grid.add(radioButton, i % 2 + 1, i / buttonsPerColumn + horizontalStartIndex);
       buttons.add(radioButton);
     }
-    Text loesungsInfo = new Text("");
-    grid.add(loesungsInfo, 1, horizontalStartIndex + 3);
+    this.infoText = new Text("");
+    grid.add(infoText, 1, horizontalStartIndex + 3);
     confirm.setOnAction(event -> {
       int selectedIndex = -1;
       for (int i = 0; i < 4; i++) {
@@ -209,7 +261,11 @@ public class GUIIngameMultiplayer implements Scenebuilder {
         throw new IllegalStateException();
       }
 
+      confirm.setDisable(true);
+      this.clickedIndex = selectedIndex;
 
+      ConnectionService connectionService = quizduellApplication.serverConnection();
+      connectionService.writeData("GAME_ANSWER", String.valueOf(selectedIndex));
     });
     grid.add(confirm, 1, horizontalStartIndex + 2);
     return new Scene(grid, 750, 450);

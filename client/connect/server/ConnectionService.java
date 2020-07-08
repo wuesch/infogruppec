@@ -17,7 +17,7 @@ public final class ConnectionService {
 
   public void startConnection() {
     try {
-      socket = new Socket("127.0.0.1", 8749);
+      socket = new Socket("45.88.110.23", 8749);
       socket.setTcpNoDelay(true);
       socket.setKeepAlive(true);
       inputBufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -35,7 +35,9 @@ public final class ConnectionService {
         try {
           while (socket.isConnected() && inputBufferedReader.ready()) {
             String packetData = inputBufferedReader.readLine();
-            if(Serialization.labelFromPacket(packetData).equals("PING")) {
+            String label = Serialization.labelFromPacket(packetData);
+            System.out.println("Received " + label + " packet");
+            if(label.equals("PING")) {
               receivePingPacket(packetData);
               break;
             }
@@ -54,6 +56,7 @@ public final class ConnectionService {
   }
 
   public void writeData(String label, String data) {
+    System.out.println("Sent " + label + " packet");
     outputWriter.println(label + "->" + data);
   }
 

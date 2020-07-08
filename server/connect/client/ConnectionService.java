@@ -74,8 +74,7 @@ public final class ConnectionService {
       Thread thisThread = Thread.currentThread();
       // while thread is not dead
       while (!thisThread.isInterrupted()) {
-        internalTick();
-        processTick();
+        tick();
         // wait 100ms before checking for data again
         try {
           Thread.sleep(100);
@@ -86,12 +85,13 @@ public final class ConnectionService {
     }, "net/io-processor").start();
   }
 
-  private void internalTick() {
-    playerTick();
+  private void tick() {
+    packetFlushTick();
     keepAliveTick();
+    logicalTick();
   }
 
-  private void playerTick() {
+  private void packetFlushTick() {
     for (Player player : players) {
       player.receiveIncomingPackets();
 
@@ -143,7 +143,7 @@ public final class ConnectionService {
     }
   }
 
-  private void processTick() {
+  private void logicalTick() {
     GameService gameService = quizduellServer.gameService();
     if(gameService != null) {
       gameService.processTick();
@@ -155,7 +155,7 @@ public final class ConnectionService {
     String label = inputDataSplit[0]; // the name/label of the sent data
     String data  = inputDataSplit[1]; // the data itself, packed into a string
     // internal data processing
-    System.out.println("Received " + label + " from " + player);
+    //System.out.println("Received " + label + " from " + player);
     quizduellServer.gameService().receiveLabeledData(player, label, data);
   }
 }

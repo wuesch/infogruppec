@@ -56,6 +56,7 @@ public class GUINameChoose implements Scenebuilder {
         String packetData = (String) event1.getSource().getValue();
 
         GUILobby guiLobby = new GUILobby(quizduellApplication);
+        GUILobby.playerIsReady = false;
         guiLobby.applyData(packetData);
         quizduellApplication.primaryStage().setScene(guiLobby.fetchScene());
       });
@@ -63,17 +64,5 @@ public class GUINameChoose implements Scenebuilder {
       new Thread(stupidTask).start();
     });
     return new Scene(grid, 750, 450);
-  }
-
-  private String stripEverythingElseThanChars(String input) {
-    char[] chars = new char[input.length()];
-    int cursor = 0;
-    for (char c : input.toCharArray()) {
-      if(Character.isAlphabetic(c)) {
-        chars[cursor++] = c;
-      }
-    }
-    System.arraycopy(chars, 0, chars, 0, cursor + 1);
-    return new String(chars);
   }
 }

@@ -5,6 +5,7 @@ import server.connect.database.DatabaseService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class QuestionResolver {
@@ -29,6 +30,7 @@ public final class QuestionResolver {
     } catch (SQLException exception) {
       throw new IllegalStateException("Couldn't read questions from database", exception);
     }
+    Collections.shuffle(loadedQuestions);
   }
 
   private final static int BEGIN_INDEX = 2;

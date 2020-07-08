@@ -2,6 +2,7 @@ package client.gui;
 
 import client.QuizduellApplication;
 import client.connect.server.ConnectionService;
+import client.gui.image.ImageLocation;
 import javafx.concurrent.Task;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -36,7 +37,7 @@ public class GUIIngameSingleplayer implements Scenebuilder {
     grid.setAlignment(Pos.CENTER);
     grid.setHgap(10);
     grid.setVgap(10);
-    Image logo = new Image("file:client/gui/image/quizduell_logo.png");
+    Image logo = new Image(new ImageLocation("client/gui/image/quizduell_logo.png").loaded().localPathJXParsed());
     ImageView iv1 = new ImageView();
     iv1.setImage(logo);
     iv1.setFitHeight(118);

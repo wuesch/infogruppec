@@ -14,7 +14,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class GUILobby implements Scenebuilder {
-  private static boolean playerIsReady;
+  public static boolean playerIsReady;
   private final Executor executor = Executors.newFixedThreadPool(1);
   private final QuizduellApplication quizduellApplication;
 
@@ -68,7 +68,7 @@ public class GUILobby implements Scenebuilder {
         GUIIngameMultiplayer guiMP = new GUIIngameMultiplayer(quizduellApplication);
         guiMP.setupWithGamePrepareData(packetData);
         guiMP.pushDataRequirement();
-
+        quizduellApplication.primaryStage().setScene(guiMP.fetchScene());
       }
     });
 
